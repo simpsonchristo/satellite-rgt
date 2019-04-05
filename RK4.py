@@ -80,7 +80,7 @@ def ecf2ecisimple(X,t,step):
     ag = we*(t-t0) + ag0
     
     x = X[0,0]*np.cos(ag)+X[1,0]*np.sin(ag)
-    y = -[0,0]*np.sin(ag)+X[1,0]*np.cos(ag)
+    y = -(X[0,0]*np.sin(ag))+X[1,0]*np.cos(ag)
     z = X[2,0]
     
     Tecf2eci = np.array([[x],[y],[z]])
@@ -138,7 +138,7 @@ def j2potential(t,X,step):
   
   #eom
   fspherical = -(mu/(r**3))*X[0:2]
-  Tecf2eci = ecf2ecisimple(t,ag0,step)
+  Tecf2eci = ecf2ecisimple(X,t,step)
   x = Tecf2eci.transpose()*X[0:2] 
   latlonalt = ecf2spherical(x)
   Tsph2ecf = spherical2ecf(latlonalt)
