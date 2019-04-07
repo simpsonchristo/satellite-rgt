@@ -68,10 +68,10 @@ def oe2rv(oe, f):
   v = X[:,1].transpose()
   X = np.array([[r],[v]])
   
-  return X
+  return X,r
 
 
-def ecf2ecisimple(X,t,step):
+def ecf2ecisimple(r,t,step):
     we = (2.0*np.pi/86164.0) #rad/sec, Earth avg rotational rate
     ag0 = 0.0
     t0 = 0.0
@@ -79,7 +79,7 @@ def ecf2ecisimple(X,t,step):
     
     ag = we*(t-t0) + ag0
     
-    x = X[0,0]*np.cos(ag)+X[1,0]*np.sin(ag)
+    x = r[0,0]*np.cos(ag)+r[1,0]*np.sin(ag)
     y = -(X[0,0]*np.sin(ag))+X[1,0]*np.cos(ag)
     z = X[2,0]
     
@@ -98,11 +98,10 @@ def ecf2spherical(x):
     #  latlonalt - Geocentric latitude, longitude, and altitude. [rad,rad,meters]
 
     re = 6378137 #meters, spherical Earth radius
-    r = np.sqrt(x[0]^2 + x[1]^2 + x[2]^2)
-    lat = np.arcsin(x[2]/r)
-    long = np.arctan2(x[1]/(r*np.cos(lat)),x[0]/(r*np.cos(lat)))
-    h = r - re
-    latlonalt = np.array([[lat],[long],[h]])
+    rad = np.sqrt(x[0]^2 + x[1]^2 + x[2]^2)
+    lat = np.arcsin(x[2]/rad)
+    long = np.arctan2(x[1]/(rad*np.cos(lat)),x[0]/(rad*np.cos(lat)))
+    latlonalt = np.array([[lat],[long],[rad]])
     
     return latlonalt
     
@@ -110,11 +109,11 @@ def ecf2spherical(x):
 def spherical2ecf(latlonalt):
     lat = latlonalt[0]
     long = latlonalt[1]
-    r = latlonalt[2]
+    rad = latlonalt[2]
     
-    x = r*np.cos(lat)*np.cos(long)
-    y = r*np.cos(lat)*np.sin(long)
-    z = r*np.sin(lat)
+    x = rad*np.cos(lat)*np.cos(long)
+    y = rad*np.cos(lat)*np.sin(long)
+    z = rad*np.sin(lat)
     
     Tsph2ecf = np.array([[x],[y],[z]])
     
@@ -177,13 +176,12 @@ ag0 = 0.0
 t = 0.0
 
 #Kepler's Equation
-z = 0
+error = 100
 E = M
-while (z < 6):
+while (error < 1e-6):
   E_old = E
   E = E - (E-ecc*np.sin(E)-M)/(1.0-np.cos(E))
   error = abs(E_old-E)
-  z = z + 1
 
 f = 2*np.arctan((np.sqrt((1+ecc)/(1-ecc))*np.tan(E/2)))
 X = oe2rv(oe, f)
@@ -198,7 +196,6 @@ while (step < 500):
         Xf[i,:] = rk4(t,X,5)
     i = i + 1        
     step = step + 0.01
-    
-    
+       
 print(Xf)
 
