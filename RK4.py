@@ -64,14 +64,21 @@ def oe2rv(oe, f):
   
   X = Q@np.array([[r*np.cos(f), Xdotstar], [r*np.sin(f), Ydotstar]])
 
-  r = X[:,0].transpose()
-  v = X[:,1].transpose()
-  X = np.array([[r],[v]])
+  #r = X[:,0].transpose()
+  #v = X[:,1].transpose()
+  #X = np.array([[r],[v]])
+  ri = X[0,0].transpose()
+  rj = X[1,0].transpose()
+  rk = X[2,0].transpose()
+  vi = X[0,1].transpose()
+  vj = X[1,1].transpose()
+  vk = X[2,1].transpose()
+  X = np.array([[ri,rj,rk],[vi,vj,vk]])
   
-  return X,r
+  return X
 
 
-def ecf2ecisimple(r,t,step):
+def ecf2ecisimple(X,t,step):
     we = (2.0*np.pi/86164.0) #rad/sec, Earth avg rotational rate
     ag0 = 0.0
     t0 = 0.0
@@ -79,9 +86,9 @@ def ecf2ecisimple(r,t,step):
     
     ag = we*(t-t0) + ag0
     
-    x = r[0,0]*np.cos(ag)+r[1,0]*np.sin(ag)
-    y = -(X[0,0]*np.sin(ag))+X[1,0]*np.cos(ag)
-    z = X[2,0]
+    x = X[0,0]*np.cos(ag)+X[0,1]*np.sin(ag)
+    y = -(X[0,0]*np.sin(ag))+X[0,1]*np.cos(ag)
+    z = X[0,2]
     
     Tecf2eci = np.array([[x],[y],[z]])
     
@@ -98,9 +105,9 @@ def ecf2spherical(x):
     #  latlonalt - Geocentric latitude, longitude, and altitude. [rad,rad,meters]
 
     re = 6378137 #meters, spherical Earth radius
-    rad = np.sqrt(x[0]^2 + x[1]^2 + x[2]^2)
-    lat = np.arcsin(x[2]/rad)
-    long = np.arctan2(x[1]/(rad*np.cos(lat)),x[0]/(rad*np.cos(lat)))
+    rad = np.sqrt(x[0,0]**2 + x[0,1]**2 + x[0,2]**2)
+    lat = np.arcsin(x[0,2]/rad)
+    long = np.arctan2(x[0,1]/(rad*np.cos(lat)),x[0,0]/(rad*np.cos(lat)))
     latlonalt = np.array([[lat],[long],[rad]])
     
     return latlonalt
@@ -143,7 +150,7 @@ def j2potential(t,X,step):
   Tsph2ecf = spherical2ecf(latlonalt)
 
   fnsr = 3.0*mu*(re**2/r**4)*J2*((3.0*(np.sin(latlonalt[0])*np.sin(latlonalt[0]))-1.0)/2.0) #radial direction
-  fnsphi = -mu*(re^2/r^4)*J2*3.0*np.sin(latlonalt[0])*np.cos(latlonalt[0]) #latitude
+  fnsphi = -mu*(re**2/r**4)*J2*3.0*np.sin(latlonalt[0])*np.cos(latlonalt[0]) #latitude
   fnslam = 0.0 #longitude
 
   d2Xdt2[0:2,0] = X[3:5]
