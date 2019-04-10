@@ -35,16 +35,16 @@ def oe2rv(oe, f):
 
   a     = oe[0]             #semimajor axis, meters
   e     = oe[1]             #eccentricity
-  i     = oe[2] #inclination, degrees
+  i     = oe[2]             #inclination, degrees
   Si = np.sin(i)
   Ci = np.cos(i)
-  raan  = oe[3] #ascending node, degrees
+  raan  = oe[3]             #ascending node, degrees
   Sraan = np.sin(raan)
   Craan = np.cos(raan)
-  w     = oe[4] #aop, degrees
+  w     = oe[4]             #aop, degrees
   Sw = np.sin(w)
   Cw = np.cos(w)
-  M     = oe[5] #mean anomaly, degrees
+  M     = oe[5]             #mean anomaly, degrees
   #Sm = np.sin(M)
   #Cm = np.cos(M)
   #Q = np.array([[((Cw*Craan)-(Sw*Sraan*Ci)), ((-Sw*Craan)-(Cw*Sraan*Ci)], \
@@ -52,12 +52,12 @@ def oe2rv(oe, f):
                #[(Sw*Si), (Cw*Si)]])
   Q = np.array([[(Cw*Craan)-(Sw*Sraan*Ci), ((Sw*Craan)-(Cw*Sraan*Ci))],[((Cw*Sraan)+(Sw*Craan*Ci)), ((-Sw*Sraan)+(Cw*Craan*Ci))], [(Sw*Si), (Cw*Si)]])  
 
-  p = a*(1-e**2);#semilatus rectum
-  h = np.sqrt(mu*p);#mag of angular momentum
+  p = a*(1-e**2)          #semilatus rectum
+  h = np.sqrt(mu*p)       #mag of angular momentum
   r = p/(1+(e*np.cos(f))) #mag of position vector, meters
 
-  Vr = (h*e/p)*np.sin(f) #radial velocity, meters/sec
-  Vtheta = h/r         #angular velocity, meters/sec
+  Vr = (h*e/p)*np.sin(f)  #radial velocity, meters/sec
+  Vtheta = h/r            #angular velocity, meters/sec
 
   Xdotstar = (Vr*np.cos(f)) - (Vtheta*np.sin(f))
   Ydotstar = (Vr*np.sin(f)) + (Vtheta*np.cos(f))
@@ -90,7 +90,7 @@ def ecf2ecisimple(X,t,step):
     y = -(X[0,0]*np.sin(ag))+X[0,1]*np.cos(ag)
     z = X[0,2]
     
-    Tecf2eci = np.array([[x],[y],[z]])
+    Tecf2eci = np.array([x,y,z])
     
     return Tecf2eci
   
@@ -104,7 +104,6 @@ def ecf2spherical(x):
     # OUTPUTS:
     #  latlonalt - Geocentric latitude, longitude, and altitude. [rad,rad,meters]
 
-    re = 6378137 #meters, spherical Earth radius
     rad = np.sqrt(x[0,0]**2 + x[0,1]**2 + x[0,2]**2)
     lat = np.arcsin(x[0,2]/rad)
     long = np.arctan2(x[0,1]/(rad*np.cos(lat)),x[0,0]/(rad*np.cos(lat)))
@@ -127,7 +126,7 @@ def spherical2ecf(latlonalt):
     return Tsph2ecf
 
 
-def j2potential(t,X,step):
+def j2potential(t,f,step):
   #J2POTENTIAL Return 2nd derivative of motion for orbit
   #Considering only J2 perturbations and point mass force use the kinematics and return the acceleration.
   #INPUTS:
@@ -137,7 +136,6 @@ def j2potential(t,X,step):
   #   d2Xdt2 - acceleration from point mass potential and J2 [meters/sec^2]
   mu = 3.9860044e+14 #m^3/s^2, Earth gravitational parameter
   re = 6378137  #meters, spherical Earth radius
-  ag0 = 0.0 #Greenwich angle
   J2 = 0.001082636
   C2_0 = -0.0004841695  #normalized value of harmonic coefficient
   r = lin.norm(X[0:2])
@@ -153,13 +151,19 @@ def j2potential(t,X,step):
   fnsphi = -mu*(re**2/r**4)*J2*3.0*np.sin(latlonalt[0])*np.cos(latlonalt[0]) #latitude
   fnslam = 0.0 #longitude
 
-  d2Xdt2[0:2,0] = X[3:5]
-  d2Xdt2[3:5,0] = fspherical + Tecf2eci@Tsph2ecf@np.array([fnsr], [fnsphi], [fnslam])
-
+  d2Xdt2 = np.empty([2,3])  
+  #d2Xdt2[0:2] = X[3:5]
+  d2Xdt2[0,0] = X[1,0]
+  d2Xdt2[0,1] = X[1,1]
+  d2Xdt2[0,2] = X[1,2]
+  #Object Arrays not currently supported
+  #d2Xdt2[3:5] = fspherical + Tecf2eci@Tsph2ecf@np.array([[fnsr], [fnsphi], [fnslam]])
+  d2Xdt2[[1,1,1],[0,1,2]] = fspherical + Tecf2eci@Tsph2ecf@np.array([[fnsr[0]], [fnsphi[0]], [fnslam]])
+  
   return d2Xdt2
     
 
-def rk4(t,f,step):
+def rk4(t,X,step):
   #RK4 Runge-Kutta Numerical integrator
   t0 = t
   tf = t0 + step
@@ -179,7 +183,8 @@ def rk4(t,f,step):
   
   return Xf    
 
-ag0 = 0.0
+
+ag0 = 0.0 #Greenwich angle
 t = 0.0
 
 #Kepler's Equation
@@ -198,9 +203,9 @@ while (step < 500):
     
     i = 0
     if not(i==0):
-        Xf[i,:] = np.append(rk4(t,Xf[i-1,:],5))
+        Xf[i,:] = np.append(rk4(t,Xf[i-1,:],step))
     elif (i==0):
-        Xf[i,:] = rk4(t,X,5)
+        Xf[i,:] = rk4(t,X,step)
     i = i + 1        
     step = step + 0.01
        
