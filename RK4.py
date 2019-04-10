@@ -121,7 +121,7 @@ def spherical2ecf(latlonalt):
     y = rad*np.cos(lat)*np.sin(long)
     z = rad*np.sin(lat)
     
-    Tsph2ecf = np.array([[x],[y],[z]])
+    Tsph2ecf = np.array([x,y,z])
     
     return Tsph2ecf
 
@@ -141,7 +141,7 @@ def j2potential(t,f,step):
   r = lin.norm(X[0:2])
   
   #eom
-  fspherical = -(mu/(r**3))*X[0:2]
+  fspherical = -(mu/(r**3))*X[0:1]
   Tecf2eci = ecf2ecisimple(X,t,step)
   x = Tecf2eci.transpose()*X[0:2] 
   latlonalt = ecf2spherical(x)
@@ -150,15 +150,19 @@ def j2potential(t,f,step):
   fnsr = 3.0*mu*(re**2/r**4)*J2*((3.0*(np.sin(latlonalt[0])*np.sin(latlonalt[0]))-1.0)/2.0) #radial direction
   fnsphi = -mu*(re**2/r**4)*J2*3.0*np.sin(latlonalt[0])*np.cos(latlonalt[0]) #latitude
   fnslam = 0.0 #longitude
+  
+  A = np.empty([1,3])
+  A[0,0] = fnsr[0]
+  A[0,1] = fnsphi[0]
+  A[0,2] = fnslam
 
   d2Xdt2 = np.empty([2,3])  
   #d2Xdt2[0:2] = X[3:5]
   d2Xdt2[0,0] = X[1,0]
   d2Xdt2[0,1] = X[1,1]
   d2Xdt2[0,2] = X[1,2]
-  #Object Arrays not currently supported
-  #d2Xdt2[3:5] = fspherical + Tecf2eci@Tsph2ecf@np.array([[fnsr], [fnsphi], [fnslam]])
-  d2Xdt2[[1,1,1],[0,1,2]] = fspherical + Tecf2eci@Tsph2ecf@np.array([[fnsr[0]], [fnsphi[0]], [fnslam]])
+
+  d2Xdt2[[1,1,1],[0,1,2]] = fspherical + Tecf2eci@Tsph2ecf@A
   
   return d2Xdt2
     
