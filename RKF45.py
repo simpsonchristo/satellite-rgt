@@ -154,6 +154,7 @@ def j2potential(t,f,h):
   fspherical = -(mu/(r**3))*X[0:1]
   Tecf2eci = ecf2ecisimple(t,ag0)
   x = Tecf2eci.transpose()*X[0:3] 
+  
   latlonalt = ecf2spherical(x)
   Tsph2ecf = spherical2ecf(latlonalt)
 
@@ -174,38 +175,48 @@ def j2potential(t,f,h):
   d2Xdt2[[1,1,1],[0,1,2]] = fspherical + Tecf2eci@Tsph2ecf@A
   
   return d2Xdt2
-    
 
 def rkf45(t,X,h):
-  #rkf45 Runge-Kutta-Fehlberg Numerical integrator
-  t0 = t
-  tf = t0 + step
+  #rkf45 Runge-Kutta-Fehlberg Numerical integrator  
+  z = 0
+  while (z < 10): #max step changes
   
-  k1 = npml.empty((7,1))
-  k2 = npml.empty((7,1))
-  k3 = npml.empty((7,1))
-  k4 = npml.empty((7,1))
-  k5 = npml.empty((7,1))
-  k6 = npml.empty((7,1))
+      Xf4 = rkf4(t,X,h)
+      Xf5 = rkf5(t,X,h)
+      
+      k1 = npml.empty((7,1))
+      k2 = npml.empty((7,1))
+      k3 = npml.empty((7,1))
+      k4 = npml.empty((7,1))
+      k5 = npml.empty((7,1))
+      k6 = npml.empty((7,1))
   
-  #---Begin integration
-  k1 = j2potential(t0,f,h)
-  k2 = j2potential(t0 + h/5, f + (h/5)*k1, h)
-  k3 = j2potential(t0 + (3/10)*h, f + (3/40)*h*k1 + (9/40)*h*k2, h)
-  k4 = j2potential(t0 + (3/5)*h, f + (3/10)*h*k1 - (9/10)*h*k2 + (6/5)*h*k3, h)
-  k5 = j2potential(t0 + h, f - (11/54)*h*k1 + (5/2)*h*k2 - (70/27)*h*k3 + (35/27)*h*k4, h)
-  k6 = j2potential(t0 + (7/8)*h, f+(1631/55296)*h*k1+(175/512)*h*k2+(575/13824)*h*k3+(44275/110592)*h*k4+(253/4096)*h*k5, h)
+      #---Begin integration
+      k1 = j2potential(t,f,h)
+      k2 = j2potential(t + h/5, f + (h/5)*k1, h)
+      k3 = j2potential(t + (3/10)*h, f + (3/40)*h*k1 + (9/40)*h*k2, h)
+      k4 = j2potential(t + (3/5)*h, f + (3/10)*h*k1 - (9/10)*h*k2 + (6/5)*h*k3, h)
+      k5 = j2potential(t + h, f - (11/54)*h*k1 + (5/2)*h*k2 - (70/27)*h*k3 + (35/27)*h*k4, h)
+      k6 = j2potential(t + (7/8)*h, f+(1631/55296)*h*k1+(175/512)*h*k2+(575/13824)*h*k3+(44275/110592)*h*k4+(253/4096)*h*k5, h)
   
-  Xf4 = f + h*((37/378)*k1 + (250/621)*k3 + (125/594)*k4 + (512/1771)*k6)
-  Xf5 = f + h*((2825/27648)*ki + (18575/48384)*k3 + (13525/55296)*k4 + (277/14336)*k5 + (1/4)*k6)
+      Xf4 = f + h*((37/378)*k1 + (250/621)*k3 + (125/594)*k4 + (512/1771)*k6)
+      Xf5 = f + h*((2825/27648)*k1 + (18575/48384)*k3 + (13525/55296)*k4 + (277/14336)*k5 + (1/4)*k6) 
+
   
-  return Xf4,Xf5    
-
-
-
-
-ag0 = 0.0 #Greenwich angle
-t = 0.0
+      r = (Xf5[0,0]-Xf4[0,0])/h
+      check = 0.84*(1e-6/r)**(1/4)
+      if r > 1e-6: 
+          if check < 0.1:
+              h = 0.1*h
+          elif check > 4:
+              h = 4*h 
+          elif 1 <= check <= 4:
+              h = check*h
+      z = z + 1      
+      else: 
+          break
+          
+  return Xf4
 
 #Kepler's Equation
 error = 100
@@ -216,23 +227,23 @@ while (error < 1e-6):
   error = abs(E_old-E)
 
 f = 2*np.arctan((np.sqrt((1+ecc)/(1-ecc))*np.tan(E/2)))
+
 X = oe2rv(oe, f)
 
-h = 0.1
-while (t < 500):
-    
-    i = 0
+ag0 = 0.0 #Greenwich angle
+t = 0.0 
+h = 1.0     #initial step size
+i = 0
+
+while (t < 250):
     if not(i==0):
-        Xf[i,:] = np.append(rkf45(t,Xf[i-1,:],h))
+        Xf[i,:] = np.append(rkf45(t,Xf[i-1,:],h))             
     elif (i==0):
         Xf[i,:] = rkf45(t,X,h)
+                  
     i = i + 1        
-    t = t + 0.01
+    t = t + h   
     
-    scale = atol + rtol
-    diff = Xf5 - Xf4
-    if diff < scale:
-        
+print(Xf)    
     
-print(Xf)
-
+    
