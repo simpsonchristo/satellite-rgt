@@ -65,16 +65,15 @@ def oe2rv(oe, f):
   
   X = Q@np.array([[r*np.cos(f), Xdotstar], [r*np.sin(f), Ydotstar]])
 
-  #r = X[:,0].transpose()
-  #v = X[:,1].transpose()
-  #X = np.array([[r],[v]])
-  ri = X[0,0].transpose()
-  rj = X[1,0].transpose()
-  rk = X[2,0].transpose()
-  vi = X[0,1].transpose()
-  vj = X[1,1].transpose()
-  vk = X[2,1].transpose()
-  X = np.array([[ri,rj,rk],[vi,vj,vk]])
+  r = X[:,0].transpose()
+  v = X[:,1].transpose()
+  X = np.array([[r],[v]])
+  #rj = X[1,0].transpose()
+  #rk = X[2,0].transpose()
+  #vi = X[0,1].transpose()
+  #vj = X[1,1].transpose()
+  #vk = X[2,1].transpose()
+  #X = np.array([[ri,rj,rk],[vi,vj,vk]])
   
   return X
 
@@ -153,7 +152,7 @@ def j2potential(t,f,h):
   #eom
   fspherical = -(mu/(r**3))*X[0:1]
   Tecf2eci = ecf2ecisimple(t,ag0)
-  x = Tecf2eci.transpose()*X[0:3] 
+  x = Tecf2eci.transpose()*X[0:2] 
   
   latlonalt = ecf2spherical(x)
   Tsph2ecf = spherical2ecf(latlonalt)
@@ -162,17 +161,20 @@ def j2potential(t,f,h):
   fnsphi = -mu*(re**2/r**4)*J2*3.0*np.sin(latlonalt[0])*np.cos(latlonalt[0]) #latitude
   fnslam = 0.0 #longitude
   
-  A = np.empty([1,3])
-  A[0,0] = fnsr[0]
-  A[0,1] = fnsphi[0]
-  A[0,2] = fnslam
+  #A = np.empty([1,3])
+  #A[0,0] = fnsr[0]
+  #A[0,1] = fnsphi[0]
+  #A[0,2] = fnslam
+  
+  d2Xdt2[0:2] = X[3:5]
+  d2Xdt2[3:5,0] = fspherical + Tecf2eci@Tsph2ecf@np.array([fnsr], [fnsphi], [fnslam])
 
-  d2Xdt2 = np.empty([2,3])  
-  d2Xdt2[0,0] = X[1,0]
-  d2Xdt2[0,1] = X[1,1]
-  d2Xdt2[0,2] = X[1,2]
+  #d2Xdt2 = np.empty([2,3])  
+  #d2Xdt2[0,0] = X[1,0]
+  #d2Xdt2[0,1] = X[1,1]
+  #d2Xdt2[0,2] = X[1,2]
 
-  d2Xdt2[[1,1,1],[0,1,2]] = fspherical + Tecf2eci@Tsph2ecf@A
+  #d2Xdt2[[1,1,1],[0,1,2]] = fspherical + Tecf2eci@Tsph2ecf@A
   
   return d2Xdt2
 
@@ -180,9 +182,6 @@ def rkf45(t,X,h):
   #rkf45 Runge-Kutta-Fehlberg Numerical integrator  
   z = 0
   while (z < 10): #max step changes
-  
-      Xf4 = rkf4(t,X,h)
-      Xf5 = rkf5(t,X,h)
       
       k1 = npml.empty((7,1))
       k2 = npml.empty((7,1))
@@ -212,8 +211,9 @@ def rkf45(t,X,h):
               h = 4*h 
           elif 1 <= check <= 4:
               h = check*h
-      z = z + 1      
-      else: 
+          z = z + 1      
+      elif r < 1e-6:
+          z + 10
           break
           
   return Xf4
