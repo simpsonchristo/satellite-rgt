@@ -3,20 +3,27 @@
 #Computed Track to Adjust for Doppler Shift
 #SimpsonAerospace (c) 2019
 import numpy as np
-import numpy.matlib as npml
-from numpy import sin as sin
-from numpy import cos as cos
-from astropy import constants as const
-import gnuradio
-import readtle
-from downloadfileurl import download_file
+from skyfield.api import Topos,  load
+#import gnuradio
+#import readtle
+#from downloadfileurl import download_file
 #------------------------------------------------------------------------------
 
 rooturl = 'http://www.celestrak.com/NORAD/elements/'
-satnogs_tle = download_file(rooturl+'satnogs.txt')
-tdrss_tle   = download_file(rooturl+'tdrss.txt')
-noaa_tle    = download_file(rooturl+'noaa.txt')
+satnogs_tle = rooturl+'satnogs.txt'
+tdrss_tle   = (rooturl+'tdrss.txt')
+noaa_tle   = (rooturl+'noaa.txt')
 
+satellites = load.tle(satnogs_tle)
+NOAA15 = satellites['NOAA 15'] 
 
-satrequest = np.array([43013])
-oe = readtle.readtle(noaa_tle)
+timetype = load.timescale()
+t = timetype.now()
+dt_tle = t - NOAA15.epoch
+print('{:.2f} days away from the last epoch observed.'.format(dt_tle))
+if(abs(dt_tle)>1.00):
+    satellites = load.tle(satnogs_tle,  reload=True)
+    NOAA15 = satellites['NOAA 15']
+    dt_tle = t - NOAA15.epoch
+    print('Now {:.2f} days away from the last epoch observed.'.format(dt_tle))
+    
