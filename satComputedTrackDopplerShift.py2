@@ -62,5 +62,7 @@ lat = subpoint.latitude
 lon = subpoint.longitude
 alt = subpoint.elevation
 #topocentric
-vecdiff = NOAA15 - UAGroundStation
-uags2sat = vecdiff.at(tephem)
+#xt = UAGroundStation.at(tephem).observe(NOAA15)
+#xt = xt.apparent()
+#el,  az,  rho = xt.altaz('standard')
+#print(rho)
