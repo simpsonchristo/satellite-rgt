@@ -4,22 +4,21 @@
 #SimpsonAerospace (c) 2019
 import numpy as np
 from skyfield.api import Topos,  load
-from datetime import datetime,  timedelta
+from datetime import datetime,  timedelta,  tzinfo
 #import gnuradio
-#import readtle
-#from downloadfileurl import download_file
 #------------------------------------------------------------------------------
-
+##NOAA 15 and UAGroundStation state information
 rooturl = 'http://www.celestrak.com/NORAD/elements/'
 satnogs_tle = rooturl+'satnogs.txt'
 tdrss_tle   = (rooturl+'tdrss.txt')
 noaa_tle   = (rooturl+'noaa.txt')
 
-#Grab NOAA 15 TLE
+#Download TLE and declare ground station
 satellites = load.tle(satnogs_tle)
 NOAA15 = satellites['NOAA 15'] 
+UAGroundStation = Topos('33.213271 N','87.544696 W')
 
-#Check age of NOAA TLE
+#Check age of TLE uploaded
 timetype = load.timescale()
 t = timetype.now()
 dt_tle = t - NOAA15.epoch
@@ -31,12 +30,37 @@ if(abs(dt_tle)>1.00):
     dt_tle = t - NOAA15.epoch
     print('Now {:.2f} days away from the last epoch observed.'.format(dt_tle))
     
-#generate an ephemeris for the next day
-#trange = timetype.utc(range(t,  t.utc_datetime()+timedelta(days=1)))
-t0 = datetime.datetime.utcnow()
-tf = t0 + timedelta(days=1)
-stepsize = timedelta(seconds=30)
-stoploop = 
+##Ephemeris for the next day
+#generate time for ephemeris
+ZERO = timedelta(0)
+HOUR = timedelta(hours=1)
 
+# A UTC class.
+class UTC(tzinfo):
+    """UTC"""
+    def utcoffset(self, dt):
+        return ZERO
+    def tzname(self, dt):
+        return "UTC"
+    def dst(self, dt):
+        return ZERO
+utc = UTC()
 
-UAGroundStation = Topos('33.213271 N','87.544696 W')
+t0 = datetime.utcnow().replace(tzinfo=utc)
+stepsize = timedelta(seconds=30.)
+stoploop = 86400/30 #30 sec timestep in terms of day
+trange = []
+for i in range(0, stoploop):
+    trange.append(t0 + stepsize)
+tephem = timetype.utc(trange)
+
+#(GCRS) Geocentric Celestial Reference System
+X = NOAA15.at(tephem)
+#Subpoint (ground track)
+subpoint = X.subpoint()
+lat = subpoint.latitude
+lon = subpoint.longitude
+alt = subpoint.elevation
+#topocentric
+vecdiff = NOAA15 - UAGroundStation
+uags2sat = vecdiff.at(tephem)
