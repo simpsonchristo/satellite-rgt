@@ -3,55 +3,16 @@
 #Computed Track to Adjust for Doppler Shift
 #SimpsonAerospace (c) 2019
 import numpy as np
-from datetime import datetime,  timedelta,  tzinfo
-from skyfield.api import Topos,  load
-import string
+from setupScAndGs import loadMostRecentTle
+from setupTimeEphem import timeEphem
+import csv
+from j2potential import j2potential
+from dopri import dopri
 #import gnuradio
 #------------------------------------------------------------------------------
 ##Load state and time
-satgroup='satnogs'
-satellite = 'NOAA 15'
-rooturl = 'http://www.celestrak.com/NORAD/elements/'
-satgroup_tle = rooturl+satgroup+'.txt'
-#Download TLE and declare ground station
-satellites = load.tle(satgroup_tle)
-chosensat = satellites[satellite] 
-UAGroundStation = Topos('33.213271 N','87.544696 W')
-#Check age of TLE uploaded
-timetype = load.timescale()
-t = timetype.now()
-dt_tle = t - chosensat.epoch
-print('{:.2f} days away from the last epoch observed.'.format(dt_tle))
-#Update if older than a day
-if(abs(dt_tle)>1.00):
-    satellites = load.tle(satgroup_tle,  reload=True)
-    chosensat = satellites[satellite]
-    dt_tle = t - chosensat.epoch
-    print('Now {:.2f} days away from the last epoch observed.'.format(dt_tle))
-    
-days=1
-dt=30
-##generate time for ephemeris
-ZERO = timedelta(0)
-
-# A UTC class.
-class UTC(tzinfo):
-    """UTC"""
-    def utcoffset(self, dt):
-        return ZERO
-    def tzname(self, dt):
-        return "UTC"
-    def dst(self, dt):
-        return ZERO
-utc = UTC()
-
-t0 = datetime.utcnow().replace(tzinfo=utc)
-stepsize = timedelta(seconds=30.)
-stoploop = 86400/30 #30 sec timestep in terms of day
-trange = []
-for i in range(0, stoploop):
-    trange.append(t0 + stepsize)
-tephem = timetype.utc(trange)
+chosensat,  UAGroundStation,  timetype = loadMostRecentTle(satgroup = 'noaa', satellite=33591)
+tephem,  t0 = timeEphem(timetype,  days=1., dt=30.)
 
 ##Generate ephemeris using SGP4
 #(GCRS) Geocentric Celestial Reference System
@@ -61,6 +22,11 @@ subpoint = X.subpoint()
 lat = subpoint.latitude
 lon = subpoint.longitude
 alt = subpoint.elevation
+
+with open('noaa19latlonalt.csv','w') as csvfile:
+    writerfun = csv.writer(csvfile)
+    for i in range(len(lat._degrees)):
+        writerfun.writerow([lat._degrees[i],  lon._degrees[i],  alt.km[i]])
 #topocentric
 #TODO: form topocentric calculation using observe instead of at
 
@@ -68,7 +34,10 @@ alt = subpoint.elevation
 Xj2skyfield = chosensat.at(timetype.utc(t0))
 xcomj2,  ycomj2,  zcomj2 = Xj2skyfield.position.km
 xdotj2,  ydotj2,  zdotj2 = Xj2skyfield.velocity.km_per_s
-print('The initial position of the satellite is '+ str(xcomj2) +', '+ str(ycomj2) +', '+ str(zcomj2)+ ' km')
-print('The initial velocity of the satellite is ' + str(xdotj2) +', '+ str(ydotj2) +', '+ str(zdotj2)+ ' km/s')
-Xj2 = np.array([xcomj2,  ycomj2,  zcomj2,  xdotj2,  ydotj2,  zdotj2])
+print ('The initial position of the satellite is %.2f, %.2f, %.2f km' % (xcomj2,  ycomj2,  zcomj2))
+print('The initial velocity of the satellite is %.2f, %.2f, %.2f km/s' % (xdotj2,  ydotj2,  zdotj2))
+
+
+#tout,  Xout = dopri(FUNCTION,  [t0 tf],  TIMESTEP,  X0)
+#tj2,  Xj2 = dopri(j2potential,  [0, 86400],  30, Xj2skyfield)
 

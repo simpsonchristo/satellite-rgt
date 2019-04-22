@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Project SYSTEM "Project-5.1.dtd">
+<!-- eric project file for project Repeating Ground Track (RGT) -->
+<!-- Saved: 2019-04-18, 15:04:20 -->
+<!-- Copyright (C) 2019 Christopher R. Simpson, crsimpson@crimson.ua.edu -->
+<Project version="5.1">
+  <Language>en_US</Language>
+  <Hash>31dce6cc9578cf210fe88c01587b7a52c386d272</Hash>
+  <ProgLanguage mixed="1">Python2</ProgLanguage>
+  <ProjectType>PyQt5</ProjectType>
+  <Description>Create a repeating ground track for pre-phase A concept studies. Consider [this paper as an example](http://epubs.surrey.ac.uk/813585/1/manuscript170108_R2_final%20version.pdf). </Description>
+  <Version>0.1</Version>
+  <Author>Christopher R. Simpson</Author>
+  <Email>crsimpson@crimson.ua.edu</Email>
+  <Eol index="0"/>
+  <Sources>
+    <Source>__init__.py</Source>
+    <Source>downloadfileurl.py</Source>
+    <Source>downloadfileurl.py2</Source>
+    <Source>readtle.py</Source>
+    <Source>readtle.py2</Source>
+    <Source>repeatingGroundTrackUsingTLE.py</Source>
+    <Source>satComputedTrackDopplerShift.py2</Source>
+    <Source>setupScAndGs.py</Source>
+    <Source>setupScAndGs.py2</Source>
+    <Source>setupTimeEphem.py</Source>
+    <Source>setupTimeEphem.py2</Source>
+  </Sources>
+  <Forms/>
+  <Translations/>
+  <Resources/>
+  <Interfaces/>
+  <Others>
+    <Other>README.md</Other>
+    <Other>noaa.txt</Other>
+    <Other>satnogs.txt</Other>
+    <Other>stations.txt</Other>
+    <Other>tdrss.txt</Other>
+  </Others>
+  <MainScript>satComputedTrackDopplerShift.py2</MainScript>
+  <Vcs>
+    <VcsType>None</VcsType>
+  </Vcs>
+  <FiletypeAssociations>
+    <FiletypeAssociation pattern="*.e4p" type="OTHERS"/>
+    <FiletypeAssociation pattern="*.idl" type="INTERFACES"/>
+    <FiletypeAssociation pattern="*.js" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.md" type="OTHERS"/>
+    <FiletypeAssociation pattern="*.ptl" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.py" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.py2" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.py3" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.pyw" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.pyw2" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.pyw3" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.qm" type="TRANSLATIONS"/>
+    <FiletypeAssociation pattern="*.qrc" type="RESOURCES"/>
+    <FiletypeAssociation pattern="*.rb" type="SOURCES"/>
+    <FiletypeAssociation pattern="*.rst" type="OTHERS"/>
+    <FiletypeAssociation pattern="*.ts" type="TRANSLATIONS"/>
+    <FiletypeAssociation pattern="*.txt" type="OTHERS"/>
+    <FiletypeAssociation pattern="*.ui" type="FORMS"/>
+    <FiletypeAssociation pattern="README" type="OTHERS"/>
+    <FiletypeAssociation pattern="README.*" type="OTHERS"/>
+  </FiletypeAssociations>
+</Project>
