@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-5.1.dtd">
 <!-- eric project file for project Repeating Ground Track (RGT) -->
-<!-- Saved: 2019-04-18, 15:04:20 -->
+<!-- Saved: 2019-04-23, 17:13:03 -->
 <!-- Copyright (C) 2019 Christopher R. Simpson, crsimpson@crimson.ua.edu -->
 <Project version="5.1">
   <Language>en_US</Language>
@@ -20,6 +20,7 @@
     <Source>readtle.py</Source>
     <Source>readtle.py2</Source>
     <Source>repeatingGroundTrackUsingTLE.py</Source>
+    <Source>rgtGUI.py2</Source>
     <Source>satComputedTrackDopplerShift.py2</Source>
     <Source>setupScAndGs.py</Source>
     <Source>setupScAndGs.py2</Source>
