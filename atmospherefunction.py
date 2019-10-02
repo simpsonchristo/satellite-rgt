@@ -19,7 +19,7 @@ def atmConditions(h):
        (Constant gravity will not be used in this case.)
        3. Constant composition of atmosphere throughout altitude range.
        4. Relative humidity not considered (dry air!)."""
-#    g0 = -32.174*(u.ft/(u.s*u.s)) # ft/sec**2
+    g0 = -32.174*(u.imperial.ft/(u.s*u.s)) # ft/sec**2
     g = Earth.k/((Earth.R_mean+h)**2)
     deg_R = u.def_unit('deg_R', represents=u.K, format={'latex': r'\degree R'})
 #    Rankine = u.def_unit('Rankine',u.deg_F + 459.67)
@@ -46,7 +46,7 @@ def atmConditions(h):
         p = p_36089*np.exp((-g/(R_air*T))*dh)
         rho = rho_36089 * np.exp((-g/(R_air*T))*dh)
         
-    return T,p,rho,R_air
+    return T,p,rho,R_air,g0
         
         
        
