@@ -9,15 +9,15 @@ from poliastro.bodies import Earth
 from poliastro.twobody import Orbit
 from poliastro.core.angles import fp_angle
 import matplotlib.pyplot as plt
-#from poliastro.coordinates import Longitude
 #custom
-#from staged_launch import aim120ToSpace
+from staged_launch import aim120ToSpace
 from atmospherefunction import atmConditions
 
 """Python 3.7
    EH Group, Inc. (c) 2019
    Christopher Simpson: christopher.r.simpson@simpsonaerospace.com"""
 #------------------------------------------------------------------------------
+missile_DV, stage_pay_m = aim120ToSpace()
 earthrotspeed = 464.5*u.m/u.s
 #dv_required to reach orbit
 orbit_alt = (np.linspace(250,600,num=7)*u.km).to(u.m) + Earth.R_mean
@@ -36,7 +36,7 @@ launch_sitevelocity = earthrotspeed*np.cos(0)
 launch_correctaz = np.arctan2(launch_sitevelocity*np.cos(launch_azI),(-(earthrotspeed*np.cos(orbit_inc)) + orbit_speed))
 launch_az = launch_correctaz + launch_azI
 #aircraft
-M = np.linspace(0.3,1.6)*u.one
+M = np.linspace(0.3,1.6, num=(16 - 3))*u.one
 ac_alt = 45000*u.imperial.ft
 T, p, rho, R_air, g0 = atmConditions(ac_alt)
 ac_speedofsound = ((np.sqrt(1.4*R_air*T)).value)*0.3048*u.m/u.s
@@ -53,14 +53,13 @@ for k in range(len(ac_speed)):
                       ((orbit_speed[i,j]-ac_speed[k])*np.sin(orbit_fp)).value]]
             holder = np.linalg.norm(holder)
             orbit_DV[i,j,k] = holder
-
-#missile_DV = aim120ToSpace()
-
-#plotting
-inc_Y, alt_X = np.meshgrid(np.rad2deg(orbit_inc[0,:]), orbit_alt)
-fig, ax = plt.subplots()
-dv = ax.contourf(alt_X, inc_Y, orbit_DV[:,:,0])
-ax.clabel(dv, inline=1, fontsize=8)
-ax.set_title('$\Delta$V Required to Achieve Orbit')
-
-plt.show()
+            
+    #plotting
+    fig, ax = plt.subplots()
+    dv = ax.contour(X_alt/1000, np.rad2deg(Y_inc), orbit_DV[:,:,k], levels=missile_DV[0,:], colors=('k',), linestyles=('-',), linewidths=(2,))
+    dvfill = ax.contourf(X_alt, np.rad2deg(Y_inc), orbit_DV[:,:,k])
+    ax.clabel(dv, fmt = '%2.1d 5 kg', colors = 'k', inline=1, fontsize=8)
+    plt.colorbar(dvfill, shrink=0.8, extend='both')
+    ax.set_title('$\Delta$V Required to Achieve Orbit')
+    
+    plt.show()
