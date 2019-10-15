@@ -10,7 +10,8 @@ import astropy.units as u
    Christopher Simpson: christopher.r.simpson@simpsonaerospace.com"""
 #------------------------------------------------------------------------------
 class motor:
-    def __init__(self, Isp, Oxidizer2FuelRatio, OxidizerDensity, FuelDensity, InertMassFraction, MotorName):
+    def __init__(self, numOfProp, Isp, Oxidizer2FuelRatio, OxidizerDensity, FuelDensity, InertMassFraction, MotorName):
+        self.numProp = numOfProp
         self.Isp = Isp
         self.rho_o = OxidizerDensity
         self.rho_f = FuelDensity
@@ -23,13 +24,18 @@ class stage(motor):
         self.Len = Length
         self.Dia = Diameter
         self.Vol = self.Len*np.pi*(self.Dia/2)**2
-        motor.__init__(self, 
+        motor.__init__(self,
+                       numOfProp          =0,
                        Isp                =1, 
                        Oxidizer2FuelRatio =1, 
                        OxidizerDensity    =1, 
                        FuelDensity        =1,
                        InertMassFraction  =1,
                        MotorName = 'HTPB/N2O')
+    #monoprop
+    def monoprop(self):
+        return (self.rho_f*self.Vol)
+    #bi-prop
     def m_f(self):
         return (self.rho_o/self.OF)*(1/(1 + self.rho_o/(self.OF*self.rho_f)))*self.Vol
     def m_o(self):
@@ -37,7 +43,10 @@ class stage(motor):
     def mprop(self):
          return self.m_f() + self.m_o()
     def m_i(self):
-         return self.mprop()*self.fi
+        if(self.numProp>1):
+            return self.mprop()*self.fi
+        elif(self.numProp==1):
+            return self.monoprop()*self.fi
 
 class payload:
     def __init__(self, RectangleOrCylinder, Length, Width, Height, Diameter, Mass):
