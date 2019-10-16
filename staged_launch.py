@@ -26,6 +26,7 @@ def rocketDV(totalLen=3.9624*u.m, stage1Len=1.8288*u.m, Dia=0.1778*u.m):
     stage1.fi    = 0.100
     
     payloadSection = payload(1, 0.36*u.m, 0.24*u.m, 0.12*u.m, stage1.Dia, np.linspace(5.0e+3,10.0e+3)*u.g)
+#    payloadSection = payload(1, 0.36*u.m, 0.24*u.m, 0.12*u.m, stage1.Dia, 10.0e+3*u.g)
     
     stage2 = stage(Length=(totalLen - payloadSection.Len - stage1.Len), Diameter = stage1.Dia)
     stage2.numProp = 2
@@ -38,6 +39,7 @@ def rocketDV(totalLen=3.9624*u.m, stage1Len=1.8288*u.m, Dia=0.1778*u.m):
     
     
     missile_DV = np.ones((1,4))
+    DV_s2 = np.ones((1,4))
     for i in range(len(payloadSection.m)):
         #DV possible from stage 2
 #        DV_stage2 = np.atleast_2d(np.empty((1,4)))
@@ -49,9 +51,12 @@ def rocketDV(totalLen=3.9624*u.m, stage1Len=1.8288*u.m, Dia=0.1778*u.m):
         DV_stage1 = stage1.Isp*g0*np.log(mi_mf)
         
         holder = np.atleast_2d(DV_stage1 + DV_stage2)
+        holder_s2 = np.atleast_2d(DV_stage2)
         missile_DV = np.concatenate((missile_DV, holder), axis=0)
+        DV_s2 = np.concatenate((DV_s2, holder_s2), axis=0)
     
     missile_DV = np.delete(missile_DV, 0, 0)
+    DV_s2 = np.delete(DV_s2, 0, 0)
 
-    return missile_DV, payloadSection, stage1, stage2
+    return DV_s2, missile_DV, payloadSection, stage1, stage2
 

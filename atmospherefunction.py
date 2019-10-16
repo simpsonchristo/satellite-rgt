@@ -5,7 +5,6 @@ import numpy as np
 import astropy.units as u
 #import scipy.constants as con
 u.imperial.enable()
-from poliastro.bodies import Earth
 
 """Python 3.7
    EH Group, Inc. (c) 2019
@@ -20,7 +19,7 @@ def atmConditions(h):
        3. Constant composition of atmosphere throughout altitude range.
        4. Relative humidity not considered (dry air!)."""
 #    g0 = -32.174*(u.imperial.ft/(u.s*u.s)) # ft/sec**2
-    g = Earth.k/((Earth.R_mean+h)**2)
+    g = (1.407646882e+16 * (u.imperial.ft * u.imperial.ft * u.imperial.ft)/(u.s*u.s))/((2.092567257*u.imperial.ft + h)**2)
     deg_R = u.def_unit('deg_R', represents=u.K, format={'latex': r'\degree R'})
 #    Rankine = u.def_unit('Rankine',u.deg_F + 459.67)
     T_ssl = (15 + 273.15)*deg_R 
@@ -74,8 +73,14 @@ def atmConditions(h):
         T = T_104987 + a*((h - h_104987)) #Rankine
         p = p_104987 * ((T/T_104987)**(-g/(a*R_air))) #psi
         rho = rho_104987 * (T/T_104987)**(-((g/(a*R_air))+1))
+    
+    elif(h>160000*u.imperial.ft): 
+        a = 0.001536 * (deg_R/u.imperial.ft) #Rankine per ft
+        T = T_104987 + a*((h - h_104987)) #Rankine
+        p = p_104987 * ((T/T_104987)**(-g/(a*R_air))) #psi
+        rho = rho_104987 * (T/T_104987)**(-((g/(a*R_air))+1))
         
-    return T,p,rho,R_air,g
+    return T,p,rho,R_air
         
         
        
