@@ -35,7 +35,7 @@ def rocketDV(totalLen=3.9624*u.m, stage1Len=1.8288*u.m, Dia=0.1778*u.m):
     stage2.motor = np.array(['HTPB/LOX', 'SP1_a/N$_2$O', 'SP1_a/LOX', 'HTPB/N$_2$O'])
     stage2.rho_f = np.array([915.0e+3, 920.0e+3, 920.0e+3, (stage1.rho_f).value])* (u.g/(u.m*u.m*u.m))
     stage2.rho_o = np.array([1141.0e+3, 772.3e+3, 1141.0e+3, 772.3e+3])* (u.g/(u.m*u.m*u.m))
-    stage2.fi    = np.array([0.08, 0.08, 0.08, 0.08])
+    stage2.fi    = np.array([0.200, 0.200, 0.200, 0.200])
     
     
     missile_DV = np.ones((1,4))

@@ -78,7 +78,7 @@ def atmConditions(h):
         a = 0.001536 * (deg_R/u.imperial.ft) #Rankine per ft
         T = T_104987 + a*((h - h_104987)) #Rankine
         p = p_104987 * ((T/T_104987)**(-g/(a*R_air))) #psi
-        rho = rho_104987 * (T/T_104987)**(-((g/(a*R_air))+1))
+        rho = rho_104987 * (T/T_104987)**(-((g/(a*R_air))+1))   
         
     return T,p,rho,R_air
         

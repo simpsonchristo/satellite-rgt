@@ -5,13 +5,12 @@ import numpy as np
 import astropy.units as u
 u.imperial.enable()
 from poliastro.bodies import Earth
-from poliastro.twobody import Orbit
-from poliastro.core.angles import fp_angle
 import matplotlib.pyplot as plt
-from scipy.integrate import odeint
+from scipy.optimize import newton
 #custom
 from staged_launch import rocketDV
 from atmospherefunction import atmConditions
+from gamma_adjust import gammaAdjust
 
 """Python 3.7
    EH Group, Inc. (c) 2019
@@ -19,7 +18,7 @@ from atmospherefunction import atmConditions
 #------------------------------------------------------------------------------
 '''Rocket'''
 'Rocket stages, payload, and DV for AIM-120, AIM-7M, and AGM-84HK sizing.'
-DV_s2_aim120, aim120_DV, aim120_pay, aim120_s1, aim120_s2 = rocketDV()
+DV_s2_aim120, aim120_DV, aim120_pay, aim120_s1, aim120_s2 = rocketDV(totalLen = 4.389*u.m, Dia=0.3505*u.m,)
 DV_s2_aim7m, aim7m_DV, aim7m_pay, aim7m_s1, aim7m_s2 = rocketDV(Dia=0.2032*u.m)
 DV_s2_agm84HK, agm84HK_DV, agm84HK_pay, agm84HK_s1, agm84HK_s2 = rocketDV(totalLen=4.38912*u.m, Dia=0.3429*u.m)
 DV_s2_10kg = np.array([DV_s2_aim120[DV_s2_aim120.shape[0] - 1,:], DV_s2_aim7m[DV_s2_aim7m.shape[0] - 1,:], DV_s2_agm84HK[DV_s2_agm84HK.shape[0] - 1,:]]).flatten()*(u.m/u.s)
@@ -28,14 +27,16 @@ tb_s2 = 60.0*u.s
 T_s1 = np.repeat(2855.08*u.N, 12)
 m_s2 = (np.array([(aim120_s2.mprop() + aim120_s2.m_i()), (aim7m_s2.mprop() + aim7m_s2.m_i()), (agm84HK_s2.mprop() + agm84HK_s2.m_i())]).flatten()*u.g).to(u.kg)
 T_s2 = (m_s2*DV_s2_10kg/tb_s2).to(u.N)
+tb_s2 = np.array([20, 40, 20, 40,
+                  20, 40, 20, 40,
+                  10, 30, 10, 30])*u.s
 
-
-mdot_s1 = (np.array([[aim120_s1.monoprop().value, aim7m_s1.monoprop().value, agm84HK_s1.monoprop().value]])/tb_s1.value)
+mdot_s1 = (np.array([[aim120_s1.monoprop().to(u.kg).value, aim7m_s1.monoprop().to(u.kg).value, agm84HK_s1.monoprop().to(u.kg).value]])/tb_s1.value)
 mdot_s1 = np.array([mdot_s1[0,0],mdot_s1[0,0],mdot_s1[0,0],mdot_s1[0,0],
                     mdot_s1[0,1],mdot_s1[0,1],mdot_s1[0,1],mdot_s1[0,1],
-                    mdot_s1[0,2],mdot_s1[0,2],mdot_s1[0,2],mdot_s1[0,2]])*(u.g/u.s)
-mdot_s2 = (np.array([[aim120_s2.mprop().value, aim7m_s2.mprop().value, agm84HK_s2.mprop().value]])/tb_s2.value)
-mdot_s2 = mdot_s2.flatten()*(u.g/u.s)
+                    mdot_s1[0,2],mdot_s1[0,2],mdot_s1[0,2],mdot_s1[0,2]])
+mdot_s2 = (np.array([aim120_s2.mprop().to(u.kg).value, aim7m_s2.mprop().to(u.kg).value, agm84HK_s2.mprop().to(u.kg).value]).flatten()/tb_s2.value)
+#mdot_s2 = mdot_s2.flatten()
 'Cross-sectional area/Cd of missile.'
 aim120_A  = np.repeat(np.pi*(aim120_s1.Dia/2)**2, 4)
 aim7m_A   = np.repeat(np.pi*(aim7m_s1.Dia/2)**2, 4)
@@ -73,24 +74,30 @@ X[0,:,0] = 0*u.m #range
 X[0,:,1] = h0    #altitude
 X[0,:,2] = 0     #vx
 X[0,:,3] = v0    #vy
-'ToDo: Determine gamma adjust value to find turnover rate of flight path angle'
+'flight-path angle'
 gamma = np.array([np.deg2rad(90)])
+dgamma = np.deg2rad(np.linspace(90,9,num=int(tb_s1.value*2)))
+'initial dv'
+#DV_1 = np.empty((int(tb_s1.value),12))
+#DV_2 = np.empty((int(tb_s1.value*2) - int(tb_s1.value + 3),12))
+DV = np.zeros((int(tb_s1.value*2), mdot_s2.shape[0]))
 'initial mass'
 mass = np.empty((int(tb_s1.value*2),12))
-mass[0,:] = np.array([(aim120_s2.mprop() + aim120_s2.m_i() + aim120_s1.monoprop() + aim120_s1.m_i()),
-                      (aim7m_s2.mprop() + aim7m_s2.m_i() + aim7m_s1.monoprop() + aim7m_s1.m_i()),
-                      (agm84HK_s2.mprop() + agm84HK_s2.m_i() + agm84HK_s1.monoprop() + agm84HK_s1.m_i())]).flatten()
-mass[int(tb_s1.value),:] = np.array([(aim120_s2.mprop() + aim120_s2.m_i()),
-                                     (aim7m_s2.mprop() + aim7m_s2.m_i()),
-                                     (agm84HK_s2.mprop() + agm84HK_s2.m_i())]).flatten()
-mass[int(tb_s1.value + 1),:] = mass[int(tb_s1.value),:]
-mass[int(tb_s1.value + 2),:] = mass[int(tb_s1.value),:]
-mass[int(tb_s1.value + 3),:] = mass[int(tb_s1.value),:]
+mass[0,:] = np.array([(aim120_s2.mprop() + aim120_s2.m_i() + aim120_s1.monoprop() + aim120_s1.m_i() + aim120_pay.m[len(aim120_pay.m)-1]),
+                      (aim7m_s2.mprop() + aim7m_s2.m_i() + aim7m_s1.monoprop() + aim7m_s1.m_i() + aim7m_pay.m[len(aim7m_pay.m)-1]),
+                      (agm84HK_s2.mprop() + agm84HK_s2.m_i() + agm84HK_s1.monoprop() + agm84HK_s1.m_i() + agm84HK_pay.m[len(agm84HK_pay.m)-1])]).flatten()
+mass[int(tb_s1.value),:] = np.array([(aim120_s2.mprop() + aim120_s2.m_i() + aim120_pay.m[len(aim120_pay.m)-1]),
+                                     (aim7m_s2.mprop() + aim7m_s2.m_i() + aim7m_pay.m[len(aim7m_pay.m)-1]),
+                                     (agm84HK_s2.mprop() + agm84HK_s2.m_i() + agm84HK_pay.m[len(agm84HK_pay.m)-1])]).flatten()
+mass[int(tb_s1.value + 4),:] = mass[int(tb_s1.value),:]
 mass = (mass*u.g).to(u.kg).value
+
+masshold_s1 = mass[0,:] - np.array([np.repeat(aim120_s1.monoprop().to(u.kg).value, 4), np.repeat(aim7m_s1.monoprop().to(u.kg).value, 4), np.repeat(agm84HK_s1.monoprop().to(u.kg).value, 4)]).flatten()
+masshold_s2 = mass[int(tb_s1.value),:] - np.array([(aim120_s2.mprop().to(u.kg).value), (aim7m_s2.mprop().to(u.kg).value), (agm84HK_s2.mprop().to(u.kg).value)]).flatten()
 
 rho = np.empty((1,12))
 g = np.empty((1,12))
-'''For loop'''
+'''For loops'''
 for t in range(0,int(tb_s1.value*2)-1):
     dt = abs(1)
     'atmospheric conditions at current altitude'
@@ -101,25 +108,39 @@ for t in range(0,int(tb_s1.value*2)-1):
         g[0,i] = Earth.k.value/((Earth.R_mean.value+X[t,i,1])**2)
     
     'calculate drag losses'
-    Vsqrd = (X[t,:,2]**2 + X[t,:,3]**2)
+    Vsqrd = (X[t,:,2]**2 + X[t,:,3]**2) 
     Dovermass = 0.5*rho*Cd*Area*Vsqrd/mass[t,:]
     
     
-    'flight path angle is constant for now'
-#    if(t<3):
-#        gamma = np.append(gamma, np.array([np.deg2rad(90)]),axis=0)
-#    elif(t==3):
-#        gamma = np.append(gamma, np.array([np.deg2rad(89.5)]),axis=0)
-#    elif(t>3):
-#        gamma_adjust = (-2*(Earth.k/(v[0,t]*v[0,dt]*h_alt[0,dt]**2))*np.cos(gamma[dt])*dt*10).value
-#        gamma = np.append(gamma, np.array([gamma[dt]+gamma_adjust]),axis=0)
-#    gamma = np.array([np.deg2rad(90)])
+    'flight path angle'
+    if(t==3):
+      gamma = np.array([np.deg2rad(89.5)])  
+    elif(t>3):
+#        fprime = lambda y, a: -2*(Earth.k.value/(Earth.R_mean.value + X[a[0],:,1])**2) * (np.cos(a[3])/(a[1]*a[2]))*1*y
+        gamma_adjust = 10.2
+        Vsqrdminus1 = (X[t - 1,:,2]**2 + X[t - 1,:,3]**2)
+        dgamma_dt = -2*(Earth.k.value/(Earth.R_mean.value + X[t,:,1])**2) * (np.cos(gamma)/(np.sqrt(Vsqrd)*np.sqrt(Vsqrdminus1)))*dt*gamma_adjust
+        gamma = gamma + dgamma_dt
+        if(any(gamma)<0):
+            flag = 1
+#        gamma = dgamma[t]
     
     'calculate thrust and steering contribution'
     if (t<int(tb_s1.value)):
         thrust = -(T_s1/mass[t,:])*np.cos(gamma) + (T_s1/mass[t,:])
+#        DV_1[t,:] = (T_s1/mass[t,:])
+        DV[t + 1,:] = (T_s1/mass[t,:])
+    elif(t==int(tb_s1.value)):
+        for k in range(1, 4):
+            DV[t + k,:] = (0/mass[t,:])
     elif(t>int(tb_s1.value + 3)):
+        for k in range(mass.shape[1]):
+            if (t>int(tb_s2[k].value + tb_s1.value + 3)):
+                T_s2[k] = 0
+                mass[t, k] = masshold_s2[k]
+                
         thrust = -(T_s2/mass[t,:])*np.cos(gamma) + (T_s2/mass[t,:])
+        DV[t + 1,:] = (T_s2/mass[t,:])
    
     'calculate gravity loss'
     g_acc = g*np.sin(gamma)
@@ -129,51 +150,48 @@ for t in range(0,int(tb_s1.value*2)-1):
     X[t + 1, :, 2] = X[t, :, 2] + ((thrust.value - Dovermass - g_acc)*(dt))*np.cos(gamma)
     
     'determine new height and range'
-    X[t + 1, :, 1] = X[t, :, 1] + 0.5*X[t,:,3]*dt
-    X[t + 1, :, 0] = X[t, :, 0] + 0.5*X[t,:,2]*dt
+    X[t + 1, :, 1] = X[t, :, 1] + X[t,:,3]*dt + 0.5*((thrust.value - Dovermass - g_acc)*(dt**2))*np.sin(gamma)
+    X[t + 1, :, 0] = X[t, :, 0] + X[t,:,2]*dt + 0.5*((thrust.value - Dovermass - g_acc)*(dt**2))*np.cos(gamma)
     
     'update mass'
-    if (t<int(tb_s1.value)):
-        mass[t + 1, :] = mass[t,:] - mdot_s1.to(u.kg/u.s).value*dt
+    if (t<int(tb_s1.value + 1)):
+        mass[t + 1, :] = mass[t,:] - mdot_s1*dt
+        for k in range(0, mass.shape[1]):
+            if (mass[t + 1, k] < masshold_s1[k]):
+                mass[t + 1, k] = masshold_s1[k]
+    elif(t==int(tb_s1.value + 1)):
+        for k in range(0, 4):
+            mass[t + k, :] = m_s2.value
     elif(t>int(tb_s1.value + 3)):
-        mass[t + 1, :] = mass[t,:] - mdot_s2.to(u.kg/u.s).value*dt
+        mass[t + 1, :] = mass[t,:] - mdot_s2*dt
+        for k in range(0, mass.shape[1]):
+            if (mass[t + 1, k] < masshold_s2[k]):
+                mass[t + 1, k] = masshold_s2[k]
+            if (t>int(tb_s2[k].value + tb_s1.value + 3)):
+                mass[t, k] = masshold_s2[k]
     
+    
+#DV_1 = DV_1.sum(axis=0)
+#DV_2 = DV_2.sum(axis=0)# + DV_1        
+'''Plotting'''
+'HTPB/LOX'
+fig, ax = plt.subplots()
+plt.title('$2^{nd}$ Stage: HTPB/LOX')
+rangeX = np.array([X[:,1,0], X[:,3,0], X[:,5,0], X[:,7,0], X[:,9,0], X[:,11,0]]).transpose()
+altitY = np.array([X[:,1,1], X[:,3,1], X[:,5,1], X[:,7,1], X[:,9,1], X[:,11,1]]).transpose()
+ax.plot(rangeX, altitY)
+plt.ylabel('Altitude [m]')
+plt.xlabel('Range [m]')
+for i in range(0, rangeX.shape[1]):
+    plt.annotate('MBO', (rangeX[int(tb_s1.value),i], altitY[int(tb_s1.value),i]), xytext=(3, 1.5), 
+                 arrowprops=dict(facecolor='black', shrink=0.0005))
+    plt.annotate('SECO', (rangeX[int(tb_s1.value + tb_s2[i].value + 5),i], altitY[int(tb_s1.value + tb_s2[i].value + 5),i]), xytext=(2000, 8000), 
+                     arrowprops=dict(facecolor='blue', shrink=0.0005))
+ax.axis('tight')
+#dv = ax.contour(X_alt/1000, np.rad2deg(Y_inc), X[:,:,], levels=missile_DV[0,:], colors=('k',), linestyles=('-',), linewidths=(2,))
+#dvfill = ax.contourf(X_alt, np.rad2deg(Y_inc), orbit_DV[:,:,k])
+#ax.clabel(dv, fmt = '%2.1d 5 kg', colors = 'k', inline=1, fontsize=8)
+#plt.colorbar(dvfill, shrink=0.8, extend='both')
+#ax.set_title('$\Delta$V Required to Achieve Orbit')
 
-
-
-'''Integrate over first stage burn time'''
-'''ToDo: (Integration) 
-        Calculate drag force at each step. (Requires calling atmosphere func)
-        Calculate velocity using a_g, a_thrust, and a_D. Remember to use flight-path angle.
-        Mass loss will be mdot*dt.
-        Altitude will be h(i) = 0.5*V*dt*sin(fp_angle)+h(i-1)'''
-
-#for k in range(len(ac_speed)):
-#    for i in range(len(orbit_alt)):
-#        for j in range(orbit_inc.shape[1]):
-#            orbit_target = Orbit.circular(Earth, (orbit_alt[i] - Earth.R_mean), (orbit_inc[i,j]*u.rad).to(u.deg))
-#            orbit_target = orbit_target.propagate(47.30*u.s)
-#            orbit_fp = fp_angle(orbit_target.nu, orbit_target.ecc)
-#            holder = [[(-(orbit_speed[i,j]-ac_speed[k])*np.cos(launch_az[i,j])*np.cos(orbit_fp)).value,
-#                      ((orbit_speed[i,j]-ac_speed[k])*np.sin(launch_az[i,j])*np.cos(orbit_fp) - v_launchsite).value,
-#                      ((orbit_speed[i,j]-ac_speed[k])*np.sin(orbit_fp)).value]]
-#            holder = np.linalg.norm(holder)
-#            orbit_DV[i,j,k] = holder
-#orbit_target = Orbit.circular(Earth, (650*u.km), (0*u.rad).to(u.deg))
-#orbit_target = orbit_target.propagate(tb_s1)
-#orbit_fp = fp_angle(orbit_target.nu, orbit_target.ecc)
-#holder = [[((-(np.linalg.norm(orbit_target.v))*np.cos(launch_az)*np.cos(orbit_fp))),
-#          ((np.linalg.norm(orbit_target.v))*np.sin(launch_az)*np.cos(orbit_fp) - 0.4645),
-#          ((np.linalg.norm(orbit_target.v))*np.sin(orbit_fp))]]
-#holder = np.linalg.norm(holder)
-#orbit_DV[i,j,k] = holder
-            
-#    #plotting
-#    fig, ax = plt.subplots()
-##    dv = ax.contour(X_alt/1000, np.rad2deg(Y_inc), orbit_DV[:,:,k], levels=missile_DV[0,:], colors=('k',), linestyles=('-',), linewidths=(2,))
-#    dvfill = ax.contourf(X_alt, np.rad2deg(Y_inc), orbit_DV[:,:,k])
-##    ax.clabel(dv, fmt = '%2.1d 5 kg', colors = 'k', inline=1, fontsize=8)
-#    plt.colorbar(dvfill, shrink=0.8, extend='both')
-#    ax.set_title('$\Delta$V Required to Achieve Orbit')
-#    
-#    plt.show()
+plt.show()
